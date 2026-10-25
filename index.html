@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lymphatic System Jeopardy</title>
+<style>
+  :root { --navy:#101c59; --blue:#244db6; --gold:#f8d65c; --bg:#eef2ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:#172033; }
+  header { background:var(--navy); color:white; text-align:center; padding:24px 16px; }
+  header h1 { margin:0; font-size:clamp(1.6rem,4vw,2.5rem); letter-spacing:.04em; }
+  header p { margin:8px 0 0; }
+  main { max-width:1100px; margin:20px auto; padding:0 14px 28px; }
+  .scores { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+  .team { background:white; border:2px solid #d5dcf4; border-radius:12px; padding:12px; text-align:center; }
+  .team.active { border-color:var(--blue); box-shadow:0 0 0 2px #244db622; }
+  .team h2 { margin:0 0 6px; font-size:1rem; }
+  .score { font-size:2rem; font-weight:800; margin:4px; font-variant-numeric:tabular-nums; }
+  button { font:inherit; cursor:pointer; border:0; border-radius:8px; padding:10px 12px; }
+  button:focus-visible { outline:3px solid #f2a900; outline-offset:2px; }
+  .select-team { background:#e7edff; color:#173b91; }
+  .board { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
+  .category { background:#173b91; color:white; padding:12px 5px; text-align:center; border-radius:7px; font-size:clamp(.65rem,1.6vw,.95rem); font-weight:700; display:flex; align-items:center; justify-content:center; min-height:68px; }
+  .tile { min-height:70px; background:var(--blue); color:var(--gold); font-weight:800; font-size:clamp(1rem,2.5vw,1.5rem); }
+  .tile.used { background:#8b93a8; color:#fff; cursor:not-allowed; }
+  .question-panel { background:white; margin-top:18px; padding:20px; border-radius:14px; border:1px solid #d5dcf4; }
+  .question-panel h2 { margin:0 0 10px; }
+  .meta { color:#5b6479; font-size:.9rem; margin-bottom:12px; }
+  #questionText { font-size:clamp(1.1rem,3vw,1.5rem); line-height:1.45; margin:14px 0; }
+  #answerText { background:#fff8d7; border-left:5px solid #e7b900; border-radius:5px; padding:14px; margin:14px 0; font-weight:700; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .primary { background:var(--navy); color:white; }
+  .correct { background:#16834a; color:white; }
+  .incorrect { background:#b42335; color:white; }
+  .secondary { background:#e8ebf3; color:#202b43; }
+  .hidden { display:none !important; }
+  .footer { text-align:center; color:#5b6479; font-size:.85rem; margin-top:18px; }
+  @media(max-width:650px) {
+    main { padding-left:7px; padding-right:7px; margin-top:12px; }
+    .board { gap:3px; }
+    .category { padding:6px 2px; min-height:65px; overflow-wrap:anywhere; }
+    .tile { min-height:58px; padding:5px 0; }
+    .question-panel { padding:14px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>LYMPHATIC SYSTEM JEOPARDY!</h1>
+  <p>Grade 8 Science • Pick a category and point value</p>
+</header>
+<main>
+  <section class="scores" aria-label="Team scores">
+    <div class="team active" id="teamCard0">
+      <h2>TEAM 1</h2><div class="score" id="score0">0</div>
+      <button class="select-team" onclick="selectTeam(0)">Select Team 1</button>
+    </div>
+    <div class="team" id="teamCard1">
+      <h2>TEAM 2</h2><div class="score" id="score1">0</div>
+      <button class="select-team" onclick="selectTeam(1)">Select Team 2</button>
+    </div>
+  </section>
+  <section class="board" id="board" aria-label="Jeopardy game board"></section>
+  <section class="question-panel" id="questionPanel" aria-live="polite">
+    <h2 id="panelTitle">Choose a question!</h2>
+    <div class="meta" id="questionMeta">Select a team, then click any point value on the board.</div>
+    <div id="questionText">The selected question will appear here.</div>
+    <div id="answerText" class="hidden"></div>
+    <div class="actions">
+      <button class="primary hidden" id="revealBtn" onclick="revealAnswer()">Reveal answer</button>
+      <button class="correct hidden" id="correctBtn" onclick="scoreQuestion(true)">Correct! Add points</button>
+      <button class="incorrect hidden" id="incorrectBtn" onclick="scoreQuestion(false)">Incorrect! Subtract points</button>
+      <button class="secondary hidden" id="skipBtn" onclick="skipQuestion()">Skip question</button>
+    </div>
+  </section>
+  <div class="actions" style="justify-content:center;margin-top:14px">
+    <button class="secondary" onclick="resetGame()">Reset game</button>
+  </div>
+  <p class="footer">Correct answers add the question's points. Incorrect answers subtract them. Have fun!</p>
+</main>
+<script>
+const categories = [
+ {name:"Lymph & Fluid", qs:[
+  ["What clear fluid travels through the lymphatic system?","Lymph"],
+  ["What fluid leaks out of blood vessels into body tissues?","Interstitial fluid"],
+  ["What is one main job of lymph?","Return excess tissue fluid to the bloodstream"],
+  ["What tiny vessels collect excess tissue fluid?","Lymphatic capillaries"],
+  ["What can happen if excess tissue fluid is not drained properly?","Swelling, called edema"]
+ ]},
+ {name:"Lymph Nodes", qs:[
+  ["What small structures filter lymph?","Lymph nodes"],
+  ["What cells inside lymph nodes help fight infection?","White blood cells, including lymphocytes"],
+  ["Where are many lymph nodes found?","Neck, armpits and groin"],
+  ["What can happen to lymph nodes during some infections?","They may become swollen"],
+  ["Why do lymph nodes filter lymph?","To trap germs and help immune cells respond"]
+ ]},
+ {name:"Organs", qs:[
+  ["Which organ filters blood and removes old red blood cells?","The spleen"],
+  ["Which organ helps T cells mature?","The thymus"],
+  ["Which tissues at the back of the throat help catch germs?","Tonsils and adenoids"],
+  ["What is the largest lymphatic organ?","The spleen"],
+  ["Where is the thymus located?","In the upper chest, behind the breastbone"]
+ ]},
+ {name:"Immune System", qs:[
+  ["What is the body's defence system against pathogens called?","The immune system"],
+  ["Which type of white blood cell can make antibodies?","B lymphocytes, or B cells"],
+  ["What do antibodies help recognize?","Specific antigens on germs or other foreign substances"],
+  ["What are pathogens?","Organisms or agents that can cause disease"],
+  ["What does immunity mean?","The ability to resist or defend against a particular infection or disease"]
+ ]},
+ {name:"Challenge Round", qs:[
+  ["What are two major jobs of the lymphatic system?","Maintaining fluid balance and supporting immune defence"],
+  ["How does the lymphatic system help digestion?","It absorbs and transports dietary fats from the small intestine"],
+  ["Why does lymph need to return to the bloodstream?","To prevent excess fluid buildup and help maintain blood volume"],
+  ["What is swelling caused by poor lymph drainage called?","Lymphedema"],
+  ["What might happen to immunity if the lymphatic system is seriously damaged?","The body may have more difficulty fighting infections"]
+ ]}
+];
+let scores=[0,0], activeTeam=0, current=null, used=new Set();
+const board=document.getElementById('board');
+function buildBoard(){
+ board.innerHTML='';
+ categories.forEach((cat,c)=>{const el=document.createElement('div');el.className='category';el.textContent=cat.name;board.appendChild(el);});
+ for(let q=0;q<5;q++){
+  categories.forEach((cat,c)=>{
+   const idx=c*5+q, b=document.createElement('button');
+   b.className='tile';b.textContent=(q+1)*100;b.setAttribute('aria-label',cat.name+', '+((q+1)*100)+' points');
+   b.id='tile'+idx;b.onclick=()=>openQuestion(c,q,idx);board.appendChild(b);
+  });
+ }
+}
+function selectTeam(t){activeTeam=t;[0,1].forEach(i=>document.getElementById('teamCard'+i).classList.toggle('active',i===t));}
+function openQuestion(c,q,idx){
+ if(used.has(idx))return;
+ current={c,q,idx,points:(q+1)*100};
+ document.getElementById('panelTitle').textContent=categories[c].name;
+ document.getElementById('questionMeta').textContent=`${current.points} points • Team ${activeTeam+1}`;
+ document.getElementById('questionText').textContent=categories[c].qs[q][0];
+ document.getElementById('answerText').textContent=categories[c].qs[q][1];
+ document.getElementById('answerText').classList.add('hidden');
+ document.getElementById('revealBtn').classList.remove('hidden');
+ ['correctBtn','incorrectBtn','skipBtn'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+ document.getElementById('questionPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function revealAnswer(){
+ if(!current)return;
+ document.getElementById('answerText').classList.remove('hidden');
+ document.getElementById('revealBtn').classList.add('hidden');
+ ['correctBtn','incorrectBtn','skipBtn'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+}
+function finishQuestion(delta){
+ if(!current)return;
+ scores[activeTeam]+=delta*current.points;
+ document.getElementById('score'+activeTeam).textContent=scores[activeTeam];
+ used.add(current.idx);
+ const tile=document.getElementById('tile'+current.idx);tile.classList.add('used');tile.textContent='✓';tile.disabled=true;
+ current=null;
+ document.getElementById('panelTitle').textContent=used.size===25?'Game over!':'Choose a question!';
+ document.getElementById('questionMeta').textContent=used.size===25?(scores[0]===scores[1]?'It is a tie!':scores[0]>scores[1]?'Team 1 wins!':'Team 2 wins!'):'Select a team, then click any point value on the board.';
+ document.getElementById('questionText').textContent=used.size===25?'Final scores: Team 1: '+scores[0]+' • Team 2: '+scores[1]:'The selected question will appear here.';
+ document.getElementById('answerText').classList.add('hidden');
+ ['revealBtn','correctBtn','incorrectBtn','skipBtn'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+}
+function scoreQuestion(correct){finishQuestion(correct?1:-1);}
+function skipQuestion(){if(!current)return;const idx=current.idx;current=null;document.getElementById('tile'+idx).focus();document.getElementById('panelTitle').textContent='Choose a question!';document.getElementById('questionMeta').textContent='Question skipped. It remains available on the board.';document.getElementById('questionText').textContent='Select another point value or return to this question.';document.getElementById('answerText').classList.add('hidden');['revealBtn','correctBtn','incorrectBtn','skipBtn'].forEach(id=>document.getElementById(id).classList.add('hidden'));}
+function resetGame(){scores=[0,0];used=new Set();current=null;document.getElementById('score0').textContent='0';document.getElementById('score1').textContent='0';selectTeam(0);buildBoard();document.getElementById('panelTitle').textContent='Choose a question!';document.getElementById('questionMeta').textContent='Select a team, then click any point value on the board.';document.getElementById('questionText').textContent='The selected question will appear here.';document.getElementById('answerText').classList.add('hidden');['revealBtn','correctBtn','incorrectBtn','skipBtn'].forEach(id=>document.getElementById(id).classList.add('hidden'));}
+buildBoard();
+</script>
+</body>
+</html>
